@@ -90,7 +90,7 @@ const App: React.FC = () => {
           onChange={handleAccessoryChange}
         />
 
-        <button onClick={handleDownload} className="download-button">Download Model</button>
+        <button onClick={handleDownload}>Download Model</button>
       </div>
 
       <div className="scene-container">

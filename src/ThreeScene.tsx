@@ -65,6 +65,7 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize((window.innerWidth - 215), window.innerHeight);
+    renderer.setClearColor(0x4caf50, 1); 
     mountRef.current.appendChild(renderer.domElement);
 
     const light = new THREE.AmbientLight(0xffffff, 0.9);
@@ -96,6 +97,7 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
     };
 
     window.addEventListener('resize', handleResize);
+    loadGLBModel(ModelName.Body)
 
     return () => {
       window.removeEventListener('resize', handleResize);
@@ -209,15 +211,30 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
     }
   }
 
+  const showAllBodyParts = (modelInfo: ModelInfo) => {
+    if (modelInfo?.subType) {
+      const relevantParts = checkBodyParts[modelInfo.subType] || [];
+      if (Array.isArray(relevantParts)) {
+        relevantParts.forEach((partName) => {
+          const tmpObj = bodyModel?.getObjectByName(partName) as THREE.SkinnedMesh | undefined;
+          if (tmpObj) {
+            tmpObj.visible = true;
+          }
+        });
+      }
+    }
+  }
+
   const loadGLBModel = (modelName: ModelName) => {
     if (!scene) return;
-    const itemToLoad = itemManager.getItem(modelName);
+    const itemToLoad = itemManager.getItem(modelName) as ModelInfo;
     if (!itemToLoad) {
       console.error(modelName, " item doesnt exist")
       return
     }
     if (itemToLoad.urlM === "") {
       setModel(itemToLoad, null);
+      showAllBodyParts(itemToLoad);
       return;
     }
     let path = getUrlGLB(itemToLoad);
@@ -391,7 +408,7 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
 
   useEffect(() => {
     loadGLBModel(ModelName.Body)
-  }, [props.selectedBodyType]);
+  }, [props.selectedBodyType, scene]);
 
   useEffect(() => {
     loadGLBModel(ModelName.Head)
