@@ -47,10 +47,15 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
   const [topModel, setTopModel] = useState<THREE.Object3D | null>(null);
   const [isPanning, setIsPanning] = useState(false);
   const [previousMouseY, setPreviousMouseY] = useState(0);
+  const raycaster = useRef(new THREE.Raycaster());
+  const mouse = useRef(new THREE.Vector2());
   const controlsRef = useRef<OrbitControls | null>(null);
   const itemManager = new ItemManager();
   const maxCameraTargetY = 1.75;
   const minCameraTargetY = 0.0;
+  const interactiveObjects = useRef<THREE.Mesh[]>([]);
+  const highlightedObject = useRef<THREE.Mesh | null>(null);
+  const originalColor = useRef<THREE.Color | null>(null);
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -165,15 +170,12 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
 
   const getMetadata = async (modelInfo: ModelInfo) => {
     if (!modelInfo.urlMJson || !modelInfo.urlFJson) return null;
-  
     const response = await fetch(props.selectedBodyType === BodyType.Male ? modelInfo.urlMJson : modelInfo.urlFJson);
-    
+
     if (!response.ok) {
       throw new Error('Network response was not ok');
     }
-  
     const data = await response.json();
-    console.log(modelInfo.name, typeof data)
     return data;
   };
 
@@ -196,6 +198,13 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
       } else if (modelInfo.subType === ModelSubtype.Top) {
         model.position.y += 0.17; //Not sure why UnionAvatars_Neck dont exists so I hardcoded it a bit
         addClothes(model, bodyModel, metadata, ModelSubtype.Top);
+      }
+      if (model instanceof THREE.Group) {
+        model.traverse((child) => {
+          if (child instanceof THREE.Mesh || child instanceof THREE.SkinnedMesh) {
+            interactiveObjects.current.push(child);
+          }
+        });
       }
     }
   }
@@ -225,7 +234,6 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
       path,
       (gltf) => {
         const loadedModel = gltf.scene;
-        console.log(modelName, loadedModel);
         addModel(itemToLoad, loadedModel);
         setModel(itemToLoad, loadedModel);
       },
@@ -296,6 +304,13 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
     downloadGLB,
   }));
 
+  const isMaterialWithColor = (material: THREE.Material | THREE.Material[]): material is THREE.MeshStandardMaterial | THREE.MeshBasicMaterial => {
+    if (Array.isArray(material)) {
+      return material.some(m => (m as any).color !== undefined);
+    }
+    return (material as any).color !== undefined;
+  };
+
   useEffect(() => {
     if (!mountRef.current) return;
 
@@ -323,6 +338,36 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
           controlsRef.current.target.copy(cameraTarget);
           camera.lookAt(cameraTarget);
           setPreviousMouseY(event.clientY);
+        }
+      }
+
+      if (camera) {
+        const rect = (event.target as HTMLElement).getBoundingClientRect();
+        
+        mouse.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+  
+        raycaster.current.setFromCamera(mouse.current, camera);
+
+        const intersects = raycaster.current.intersectObjects(interactiveObjects.current, false);
+
+        if (highlightedObject.current && (!intersects.length || highlightedObject.current !== intersects[0].object)) {
+          if (highlightedObject.current.material && 'color' in highlightedObject.current.material) {
+            (highlightedObject.current.material as THREE.MeshStandardMaterial).color.copy(originalColor.current!);
+          }
+          highlightedObject.current = null;
+          originalColor.current = null;
+        }
+
+        if (intersects.length > 0) {
+          const intersectedObject = intersects[0].object as THREE.Mesh;
+          if (intersectedObject.material && isMaterialWithColor(intersectedObject.material)) {
+            if (highlightedObject.current !== intersectedObject) {
+              highlightedObject.current = intersectedObject;
+              originalColor.current = intersectedObject.material.color.clone();
+              intersectedObject.material.color.set(0xff0000);
+            }
+          }
         }
       }
     };
