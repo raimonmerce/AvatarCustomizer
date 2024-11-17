@@ -1,9 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { ModelName, ModelSubtype, ModelInfo, ItemManager, BodyType, ModelType } from './ItemManager';
-import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader'; // Import DRACOLoader
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'; // Import OrbitControls
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
 
 type ThreeSceneProps = {
   selectedBodyType: BodyType;
@@ -14,14 +15,7 @@ type ThreeSceneProps = {
   selectedTop: ModelName;
 };
 
-const ThreeScene: React.FC<ThreeSceneProps> = ({ 
-  selectedBodyType, 
-  selectedAccessory,
-  selectedBottom,
-  selectedHairstly,
-  selectedShoe,
-  selectedTop
-  }) => {
+const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
 
   const mountRef = useRef<HTMLDivElement>(null);
   const [scene, setScene] = useState<THREE.Scene | null>(null);
@@ -86,56 +80,75 @@ const ThreeScene: React.FC<ThreeSceneProps> = ({
     };
   }, []);
 
-  const loadBodyModel = () => {
-    loadGLBModel(ModelName.Body)
-  }
-
   const getUrlGLB = (item: ModelInfo) => {
-    if (selectedBodyType === BodyType.Female && item.urlF) return item.urlF
+    if (props.selectedBodyType === BodyType.Female && item.urlF) return item.urlF
     else return item.urlM;
   }
 
+  const removeModel = (currentModel: THREE.Object3D | null) => {
+    if (!currentModel) return;
+    if (currentModel.parent) {
+      currentModel.parent.remove(currentModel);
+    } else {
+      scene?.remove(currentModel);
+    }
+  };
+
   const setModel = (modelInfo : ModelInfo, model : THREE.Object3D | null) => {
     if (modelInfo.type === ModelType.Body) {
-      if (bodyModel) scene?.remove(bodyModel);
+      if (bodyModel) removeModel(bodyModel);
       setBodyModel(model);
     } else if (modelInfo.type === ModelType.Head) {
-      if (headModel) scene?.remove(headModel);
+      if (headModel) removeModel(headModel);
       setHeadModel(model);
     } else if (modelInfo.type === ModelType.Garments) {
       if (modelInfo.subType === ModelSubtype.Accessory) {
-        if (accessoryModel) scene?.remove(accessoryModel);
+        if (accessoryModel) removeModel(accessoryModel);
         setAccessoryModel(model);
       } else if (modelInfo.subType === ModelSubtype.Bottom) {
-        if (bottomModel) scene?.remove(bottomModel);
+        if (bottomModel) removeModel(bottomModel);
         setBottomModel(model);
       } else if (modelInfo.subType === ModelSubtype.Hairstly) {
-        if (hairstlyModel) scene?.remove(hairstlyModel);
+        if (hairstlyModel) removeModel(hairstlyModel);
         setHairstlyModel(model);
       } else if (modelInfo.subType === ModelSubtype.Shoe) {
-        if (shoeModel) scene?.remove(shoeModel);
+        if (shoeModel) removeModel(shoeModel);
         setShoeModel(model);
       } else if (modelInfo.subType === ModelSubtype.Top) {
-        if (topModel) scene?.remove(topModel);
+        if (topModel) removeModel(topModel);
         setTopModel(model);
       }
     }
   }
 
-  const getModelPosition = (modelInfo : ModelInfo): THREE.Vector3  => {
-    if (modelInfo.type === ModelType.Body) return new THREE.Vector3(0, 0, 0);
-    else if (modelInfo.type === ModelType.Head) {
-      const emptyHead = bodyModel?.getObjectByName('Empty-Head');
-      if (emptyHead?.position) return emptyHead.position.clone();
+  const addModelInPlace = (modelChild : THREE.Object3D, modelFather : THREE.Object3D |null, unionName: string) => {
+    const unionObject = modelFather?.getObjectByName(unionName);
+    if (unionObject) unionObject.add(modelChild);
+  } 
+
+  const addModel = (modelInfo : ModelInfo, model : THREE.Object3D ) => {
+    if (!scene) return;
+    if (modelInfo.type === ModelType.Body) {
+      scene.add(model);
+    } else if (modelInfo.type === ModelType.Head) {
+      addModelInPlace(model, bodyModel, 'Empty-Head');
+    } else if (modelInfo.type === ModelType.Garments) {
+      if (modelInfo.subType === ModelSubtype.Accessory) {
+        bodyModel?.add(model);
+      } else if (modelInfo.subType === ModelSubtype.Bottom) {
+        addModelInPlace(model, bodyModel, 'UnionAvatars_Hips');
+      } else if (modelInfo.subType === ModelSubtype.Hairstly) {
+        addModelInPlace(model, headModel, 'UnionAvatars_Head');
+      } else if (modelInfo.subType === ModelSubtype.Shoe) {
+        addModelInPlace(model, bodyModel, 'UnionAvatars_Feet');
+      } else if (modelInfo.subType === ModelSubtype.Top) {
+        addModelInPlace(model, bodyModel, 'UnionAvatars_Chest');
+      }
     }
-    return new THREE.Vector3(0, 0, 0);
   }
 
   const loadGLBModel = (modelName: ModelName) => {
-    if (!scene) {
-      console.error("Scene doesnt exist")
-      return
-    }
+    if (!scene) return;
     const itemToLoad = itemManager.getItem(modelName);
     if (!itemToLoad) {
       console.error(modelName, " item doesnt exist")
@@ -159,9 +172,7 @@ const ThreeScene: React.FC<ThreeSceneProps> = ({
       path,
       (gltf) => {
         const loadedModel = gltf.scene;
-        const position = getModelPosition(itemToLoad);
-        loadedModel.position.copy(position);
-        scene.add(loadedModel);
+        addModel(itemToLoad, loadedModel);
         setModel(itemToLoad, loadedModel);
       },
       undefined,
@@ -171,38 +182,92 @@ const ThreeScene: React.FC<ThreeSceneProps> = ({
     );
   };
 
+  const downloadGLB = (): void => {
+    const object = bodyModel;
+    if (!object) {
+        console.error('No object to export!');
+        return;
+    }
+
+    if (object.type !== "Group" && object.type !== "Mesh") {
+        console.error("Invalid object type for export:", object.type);
+        return;
+    }
+
+    let fileName = 'model.glb';
+    const exporter = new GLTFExporter();
+
+    if (object.type === "Group") {
+        console.log("Object is a group, containing the following children:", object.children);
+    }
+
+    try {
+        exporter.parse(
+            object,
+            (result: ArrayBuffer | object) => {
+                if (result instanceof ArrayBuffer) {
+                    console.log("GLB export successful, size:", result.byteLength, "bytes");
+                    const blob = new Blob([result], { type: 'model/gltf-binary' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = fileName;
+                    document.body.appendChild(link);
+                    link.click();
+                    URL.revokeObjectURL(link.href);
+                    document.body.removeChild(link);
+                } else {
+                    console.error('Failed to export as GLB. Unexpected result type:', result);
+                }
+            },
+            (error: any) => {
+                console.error('GLTF Export failed with error:', error);
+            },
+            { binary: true }
+        );
+    } catch (error) {
+        console.error("An unexpected error occurred during GLB export:", error);
+    }
+}
+
+  useImperativeHandle(ref, () => ({
+    downloadGLB,
+  }));
+
   useEffect(() => {
-    loadBodyModel();
-  }, [selectedBodyType]);
+    loadGLBModel(ModelName.Body)
+  }, [props.selectedBodyType]);
 
   useEffect(() => {
     loadGLBModel(ModelName.Head)
-    loadGLBModel(selectedAccessory);
-    loadGLBModel(selectedBottom);
-    loadGLBModel(selectedHairstly);
-    loadGLBModel(selectedShoe);
-    loadGLBModel(selectedTop);
+    loadGLBModel(props.selectedAccessory);
+    loadGLBModel(props.selectedBottom);
+    loadGLBModel(props.selectedShoe);
+    loadGLBModel(props.selectedTop);
   }, [bodyModel]);
 
   useEffect(() => {
-    loadGLBModel(selectedAccessory);
-  }, [selectedAccessory]);
+    loadGLBModel(props.selectedHairstly);
+  }, [headModel]);
 
   useEffect(() => {
-    loadGLBModel(selectedBottom);
-  }, [selectedBottom]);
+    loadGLBModel(props.selectedAccessory);
+  }, [props.selectedAccessory]);
 
   useEffect(() => {
-    loadGLBModel(selectedHairstly,);
-  }, [selectedHairstly]);
+    loadGLBModel(props.selectedBottom);
+  }, [props.selectedBottom]);
 
   useEffect(() => {
-    loadGLBModel(selectedShoe);
-  }, [selectedShoe]);
+    loadGLBModel(props.selectedHairstly,);
+  }, [props.selectedHairstly]);
 
   useEffect(() => {
-    loadGLBModel(selectedTop);
-  }, [selectedTop]);
+    loadGLBModel(props.selectedShoe);
+  }, [props.selectedShoe]);
+
+  useEffect(() => {
+    loadGLBModel(props.selectedTop);
+  }, [props.selectedTop]);
 
   // Animation loop
   useEffect(() => {
@@ -218,6 +283,6 @@ const ThreeScene: React.FC<ThreeSceneProps> = ({
   }, [renderer, scene, camera]);
 
   return <div ref={mountRef} />;
-};
+});
 
 export default ThreeScene;

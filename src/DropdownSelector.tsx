@@ -23,7 +23,6 @@ const DropdownSelector: React.FC<DropdownSelectorProps> = ({
       <select
         value={selectedValue}
         onChange={handleChange}
-        style={{ padding: '10px', fontSize: '16px', cursor: 'pointer' }}
       >
         {options.map((option, index) => (
           <option key={index} value={option}>

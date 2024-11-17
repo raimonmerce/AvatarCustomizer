@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import './App.css';
 import ThreeScene from './ThreeScene';
 import { ModelName, BodyType, ItemManager, ModelSubtype } from './ItemManager';
@@ -12,6 +12,14 @@ const App: React.FC = () => {
   const [selectedShoe, setSelectedShoe] = useState<ModelName>(ModelName.EmptyShoe);
   const [selectedTop, setSelectedTop] = useState<ModelName>(ModelName.EmptyTop);
   const itemManager = new ItemManager();
+
+  const threeSceneRef = useRef<{ downloadGLB: () => void }>(null);
+
+  const handleDownload = () => {
+    if (threeSceneRef.current) {
+      threeSceneRef.current.downloadGLB();
+    }
+  };
 
   const handleBodyChange = (value: string) => {
     setSelectedBodyType(value === BodyType.Male ? BodyType.Male : BodyType.Female);
@@ -81,10 +89,13 @@ const App: React.FC = () => {
           selectedValue={selectedAccessory}
           onChange={handleAccessoryChange}
         />
+
+        <button onClick={handleDownload} className="download-button">Download Model</button>
       </div>
 
       <div className="scene-container">
         <ThreeScene
+          ref={threeSceneRef}
           selectedBodyType={selectedBodyType}
           selectedAccessory={selectedAccessory}
           selectedBottom={selectedBottom}
