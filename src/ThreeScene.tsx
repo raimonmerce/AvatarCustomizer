@@ -15,11 +15,20 @@ type ThreeSceneProps = {
   selectedTop: ModelName;
 };
 
+const fixPositions: Record<ModelSubtype, [THREE.Vector3, THREE.Vector3]>  = {
+  [ModelSubtype.Accessory] : [new THREE.Vector3(0, 1.72, 0.5), new THREE.Vector3(0, 1.72, 0)],
+  [ModelSubtype.Bottom] : [new THREE.Vector3(0, 0.6, 0.9), new THREE.Vector3(0, 0.6, 0)],
+  [ModelSubtype.Hairstly] : [new THREE.Vector3(0, 1.72, 0.5), new THREE.Vector3(0, 1.72, 0)],
+  [ModelSubtype.Shoe] : [new THREE.Vector3(0.0, 0.3, 0.4), new THREE.Vector3(0, 0.0, 0)],
+  [ModelSubtype.Top] : [new THREE.Vector3(0, 1.28, 0.72), new THREE.Vector3(0, 1.28, 0)],
+}
+
 const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
 
   const mountRef = useRef<HTMLDivElement>(null);
   const [scene, setScene] = useState<THREE.Scene | null>(null);
   const [camera, setCamera] = useState<THREE.PerspectiveCamera | null>(null);
+  const [cameraTarget, setCameraTarget] = useState<THREE.Vector3>(new THREE.Vector3(0, 1, 0));
   const [renderer, setRenderer] = useState<THREE.WebGLRenderer | null>(null);
   const [headModel, setHeadModel] = useState<THREE.Object3D | null>(null);
   const [bodyModel, setBodyModel] = useState<THREE.Object3D | null>(null);
@@ -28,9 +37,12 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
   const [hairstlyModel, setHairstlyModel] = useState<THREE.Object3D | null>(null);
   const [shoeModel, setShoeModel] = useState<THREE.Object3D | null>(null);
   const [topModel, setTopModel] = useState<THREE.Object3D | null>(null);
-  const itemManager = new ItemManager();
-
+  const [isPanning, setIsPanning] = useState(false);
+  const [previousMouseY, setPreviousMouseY] = useState(0);
   const controlsRef = useRef<OrbitControls | null>(null);
+  const itemManager = new ItemManager();
+  const maxCameraTargetY = 1.75;
+  const minCameraTargetY = 0.0;
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -50,15 +62,14 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
     controls.dampingFactor = 0.25;
     controls.screenSpacePanning = false;
     controls.screenSpacePanning = true;
-    controls.maxDistance = 3;
-    controls.minDistance = 1;
+    controls.maxDistance = 2.5;
+    controls.minDistance = 0.5;
     controls.enableZoom = true;
     controls.enableRotate = true;
     controls.enablePan = false;
 
-    const target = new THREE.Vector3(0, 1, 0);
-    controls.target.copy(target);
-    camera.lookAt(target);
+    controls.target.copy(cameraTarget);
+    camera.lookAt(cameraTarget);
 
     setScene(scene);
     setCamera(camera);
@@ -182,6 +193,19 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
     );
   };
 
+  const changeToFixCamera = (subtype : ModelSubtype | null): void => {
+    if (camera && controlsRef.current){
+      const positions = subtype? 
+        fixPositions[subtype] 
+        : 
+        [new THREE.Vector3(0, 1, 1.8), new THREE.Vector3(0, 1, 0)];
+      camera.position.copy(positions[0]);
+      cameraTarget.copy(positions[1]);
+      controlsRef.current.target.copy(cameraTarget);
+      camera.lookAt(cameraTarget);
+    }
+  }
+
   const downloadGLB = (): void => {
     const object = bodyModel;
     if (!object) {
@@ -234,6 +258,55 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
   }));
 
   useEffect(() => {
+    if (!mountRef.current) return;
+
+    const container = mountRef.current;
+
+    const onMouseDown = (event: MouseEvent) => {
+      if (event.button === 2) {
+        setIsPanning(true);
+        setPreviousMouseY(event.clientY);
+      }
+    };
+
+    const onMouseMove = (event: MouseEvent) => {
+      if (isPanning 
+        && camera 
+        && controlsRef.current 
+      ) {
+        const deltaY = event.clientY - previousMouseY;
+        if (
+          maxCameraTargetY >= (cameraTarget.y - deltaY * 0.01)
+          && minCameraTargetY <= (cameraTarget.y - deltaY * 0.01)
+        ) {
+          camera.position.y -= deltaY * 0.01;
+          cameraTarget.y -= deltaY * 0.01;
+          controlsRef.current.target.copy(cameraTarget);
+          camera.lookAt(cameraTarget);
+          console.log("camera:", camera.position, " cameraTarget:", cameraTarget)
+          setPreviousMouseY(event.clientY);
+        }
+      }
+    };
+
+    const onMouseUp = (event: MouseEvent) => {
+      if (event.button === 2) {
+        setIsPanning(false);
+      }
+    };
+
+    container.addEventListener('mousedown', onMouseDown);
+    container.addEventListener('mousemove', onMouseMove);
+    container.addEventListener('mouseup', onMouseUp);
+
+    return () => {
+      container.removeEventListener('mousedown', onMouseDown);
+      container.removeEventListener('mousemove', onMouseMove);
+      container.removeEventListener('mouseup', onMouseUp);
+    };
+  }, [isPanning, previousMouseY, camera]);
+
+  useEffect(() => {
     loadGLBModel(ModelName.Body)
   }, [props.selectedBodyType]);
 
@@ -243,6 +316,7 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
     loadGLBModel(props.selectedBottom);
     loadGLBModel(props.selectedShoe);
     loadGLBModel(props.selectedTop);
+    changeToFixCamera(null)
   }, [bodyModel]);
 
   useEffect(() => {
@@ -251,22 +325,27 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
 
   useEffect(() => {
     loadGLBModel(props.selectedAccessory);
+    changeToFixCamera(ModelSubtype.Accessory)
   }, [props.selectedAccessory]);
 
   useEffect(() => {
     loadGLBModel(props.selectedBottom);
+    changeToFixCamera(ModelSubtype.Bottom)
   }, [props.selectedBottom]);
 
   useEffect(() => {
-    loadGLBModel(props.selectedHairstly,);
+    loadGLBModel(props.selectedHairstly);
+    changeToFixCamera(ModelSubtype.Hairstly)
   }, [props.selectedHairstly]);
 
   useEffect(() => {
     loadGLBModel(props.selectedShoe);
+    changeToFixCamera(ModelSubtype.Shoe)
   }, [props.selectedShoe]);
 
   useEffect(() => {
     loadGLBModel(props.selectedTop);
+    changeToFixCamera(ModelSubtype.Top)
   }, [props.selectedTop]);
 
   // Animation loop
@@ -278,7 +357,6 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
       if (controlsRef.current) controlsRef.current.update();
       renderer.render(scene, camera);
     };
-
     animate();
   }, [renderer, scene, camera]);
 
