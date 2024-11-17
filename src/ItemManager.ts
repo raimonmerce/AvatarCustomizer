@@ -56,8 +56,8 @@ export enum ModelSubtype {
 
 
 export enum BodyType {
-  Male = 'male',
-  Female = 'female',
+  Male = 'Male',
+  Female = 'Female',
 }
 
 export interface ModelInfo {

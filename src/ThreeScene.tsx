@@ -6,7 +6,7 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader'; // Import 
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'; // Import OrbitControls
 
 type ThreeSceneProps = {
-  bodyType: BodyType;
+  selectedBodyType: BodyType;
   selectedAccessory: ModelName;
   selectedBottom: ModelName;
   selectedHairstly: ModelName;
@@ -15,7 +15,7 @@ type ThreeSceneProps = {
 };
 
 const ThreeScene: React.FC<ThreeSceneProps> = ({ 
-  bodyType, 
+  selectedBodyType, 
   selectedAccessory,
   selectedBottom,
   selectedHairstly,
@@ -86,13 +86,12 @@ const ThreeScene: React.FC<ThreeSceneProps> = ({
     };
   }, []);
 
-
-  const loadBodyModel = (bodyType: BodyType) => {
-    loadGLBModel(ModelName.Body, bodyType)
+  const loadBodyModel = () => {
+    loadGLBModel(ModelName.Body)
   }
 
-  const getUrlGLB = (item: ModelInfo, bodyType: BodyType) => {
-    if (bodyType === BodyType.Female && item.urlF) return item.urlF
+  const getUrlGLB = (item: ModelInfo) => {
+    if (selectedBodyType === BodyType.Female && item.urlF) return item.urlF
     else return item.urlM;
   }
 
@@ -132,13 +131,12 @@ const ThreeScene: React.FC<ThreeSceneProps> = ({
     return new THREE.Vector3(0, 0, 0);
   }
 
-  const loadGLBModel = (modelName: ModelName, bodyType: BodyType) => {
+  const loadGLBModel = (modelName: ModelName) => {
     if (!scene) {
       console.error("Scene doesnt exist")
       return
     }
     const itemToLoad = itemManager.getItem(modelName);
-    console.log("itemToLoad", itemToLoad)
     if (!itemToLoad) {
       console.error(modelName, " item doesnt exist")
       return
@@ -147,7 +145,7 @@ const ThreeScene: React.FC<ThreeSceneProps> = ({
       setModel(itemToLoad, null);
       return;
     }
-    let path = getUrlGLB(itemToLoad, bodyType);
+    let path = getUrlGLB(itemToLoad);
     if (!path) {
       console.error(modelName, " doesnt have GBL URL")
       return
@@ -174,36 +172,36 @@ const ThreeScene: React.FC<ThreeSceneProps> = ({
   };
 
   useEffect(() => {
-    if (bodyType) loadBodyModel(bodyType);
-  }, [bodyType]);
+    loadBodyModel();
+  }, [selectedBodyType]);
 
   useEffect(() => {
-    loadGLBModel(ModelName.Head, bodyType)
-    loadGLBModel(selectedAccessory, bodyType);
-    loadGLBModel(selectedBottom, bodyType);
-    loadGLBModel(selectedHairstly, bodyType);
-    loadGLBModel(selectedShoe, bodyType);
-    loadGLBModel(selectedTop, bodyType);
+    loadGLBModel(ModelName.Head)
+    loadGLBModel(selectedAccessory);
+    loadGLBModel(selectedBottom);
+    loadGLBModel(selectedHairstly);
+    loadGLBModel(selectedShoe);
+    loadGLBModel(selectedTop);
   }, [bodyModel]);
 
   useEffect(() => {
-    loadGLBModel(selectedAccessory, bodyType);
+    loadGLBModel(selectedAccessory);
   }, [selectedAccessory]);
 
   useEffect(() => {
-    loadGLBModel(selectedBottom, bodyType);
+    loadGLBModel(selectedBottom);
   }, [selectedBottom]);
 
   useEffect(() => {
-    loadGLBModel(selectedHairstly, bodyType);
+    loadGLBModel(selectedHairstly,);
   }, [selectedHairstly]);
 
   useEffect(() => {
-    loadGLBModel(selectedShoe, bodyType);
+    loadGLBModel(selectedShoe);
   }, [selectedShoe]);
 
   useEffect(() => {
-    loadGLBModel(selectedTop, bodyType);
+    loadGLBModel(selectedTop);
   }, [selectedTop]);
 
   // Animation loop
