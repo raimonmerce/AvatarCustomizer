@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 
 export enum ModelName {
   //Main
@@ -68,6 +69,22 @@ export interface ModelInfo {
   urlMJson?: string;
   urlF?: string;
   urlFJson?: string;
+}
+
+const checkBodyParts: Record<ModelSubtype, string[]>  = {
+  [ModelSubtype.Accessory] : [],
+  [ModelSubtype.Bottom] : ["UnionAvatars_Hips", "UnionAvatars_Legs_bottom", "UnionAvatars_Legs_top"],
+  [ModelSubtype.Hairstly] : [],
+  [ModelSubtype.Shoe] : ["UnionAvatars_Feet"],
+  [ModelSubtype.Top] : ["UnionAvatars_Chest", "UnionAvatars_Belly", "UnionAvatars_Arms_bottom", "UnionAvatars_Arms_top"],
+}
+
+const fixCameraPositions: Record<ModelSubtype, [THREE.Vector3, THREE.Vector3]>  = {
+  [ModelSubtype.Accessory] : [new THREE.Vector3(0, 1.72, 0.5), new THREE.Vector3(0, 1.72, 0)],
+  [ModelSubtype.Bottom] : [new THREE.Vector3(0, 0.6, 0.9), new THREE.Vector3(0, 0.6, 0)],
+  [ModelSubtype.Hairstly] : [new THREE.Vector3(0, 1.72, 0.5), new THREE.Vector3(0, 1.72, 0)],
+  [ModelSubtype.Shoe] : [new THREE.Vector3(0.0, 0.3, 0.4), new THREE.Vector3(0, 0.0, 0)],
+  [ModelSubtype.Top] : [new THREE.Vector3(0, 1.28, 0.72), new THREE.Vector3(0, 1.28, 0)],
 }
 
 const itemsMap: Record<ModelName, ModelInfo | null> = {
@@ -309,9 +326,13 @@ const itemsMap: Record<ModelName, ModelInfo | null> = {
 
 export class ItemManager {
   private items: Record<ModelName, ModelInfo | null>;
+  private checkBodyParts: Record<ModelSubtype, string[]>;
+  private fixCameraPositions: Record<ModelSubtype, [THREE.Vector3, THREE.Vector3]>;
 
   constructor() {
     this.items = itemsMap;
+    this.checkBodyParts = checkBodyParts;
+    this.fixCameraPositions = fixCameraPositions;
   }
 
   getItem(name: ModelName): ModelInfo | null {
@@ -336,6 +357,14 @@ export class ItemManager {
     if (Object.values(ModelName).includes(modelName as ModelName)) {
       return modelName as ModelName;
     }
-    return ModelName.EmptyShoe; // TO CHECK7
+    return ModelName.EmptyShoe; //To check
+  }
+
+  getCheckBodyParts(): Record<ModelSubtype, string[]> {
+    return this.checkBodyParts;
+  }
+
+  getFixCameraPositions(): Record<ModelSubtype, [THREE.Vector3, THREE.Vector3]> {
+    return this.fixCameraPositions;
   }
 }

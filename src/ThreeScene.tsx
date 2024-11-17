@@ -15,22 +15,6 @@ type ThreeSceneProps = {
   selectedTop: ModelName;
 };
 
-const checkBodyParts: Record<ModelSubtype, string[]>  = {
-  [ModelSubtype.Accessory] : [],
-  [ModelSubtype.Bottom] : ["UnionAvatars_Hips", "UnionAvatars_Legs_bottom", "UnionAvatars_Legs_top"],
-  [ModelSubtype.Hairstly] : [],
-  [ModelSubtype.Shoe] : ["UnionAvatars_Feet"],
-  [ModelSubtype.Top] : ["UnionAvatars_Chest", "UnionAvatars_Belly", "UnionAvatars_Arms_bottom", "UnionAvatars_Arms_top"],
-}
-
-const fixCameraPositions: Record<ModelSubtype, [THREE.Vector3, THREE.Vector3]>  = {
-  [ModelSubtype.Accessory] : [new THREE.Vector3(0, 1.72, 0.5), new THREE.Vector3(0, 1.72, 0)],
-  [ModelSubtype.Bottom] : [new THREE.Vector3(0, 0.6, 0.9), new THREE.Vector3(0, 0.6, 0)],
-  [ModelSubtype.Hairstly] : [new THREE.Vector3(0, 1.72, 0.5), new THREE.Vector3(0, 1.72, 0)],
-  [ModelSubtype.Shoe] : [new THREE.Vector3(0.0, 0.3, 0.4), new THREE.Vector3(0, 0.0, 0)],
-  [ModelSubtype.Top] : [new THREE.Vector3(0, 1.28, 0.72), new THREE.Vector3(0, 1.28, 0)],
-}
-
 const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
 
   const mountRef = useRef<HTMLDivElement>(null);
@@ -156,7 +140,7 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
   };
 
   const addClothes = (modelChild: THREE.Object3D, modelFather: THREE.Object3D | null, metadata: any, subtype : ModelSubtype) => {
-    const relevantParts = checkBodyParts[subtype] || [];
+    const relevantParts = itemManager.getCheckBodyParts()[subtype] || [];
     const bodyMetadata = metadata.metadata.body;
 
     Object.entries(bodyMetadata).forEach(([key, value]) => {
@@ -213,7 +197,7 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
 
   const showAllBodyParts = (modelInfo: ModelInfo) => {
     if (modelInfo?.subType) {
-      const relevantParts = checkBodyParts[modelInfo.subType] || [];
+      const relevantParts = itemManager.getCheckBodyParts()[modelInfo.subType] || [];
       if (Array.isArray(relevantParts)) {
         relevantParts.forEach((partName) => {
           const tmpObj = bodyModel?.getObjectByName(partName) as THREE.SkinnedMesh | undefined;
@@ -264,7 +248,7 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
   const changeToFixCamera = (subtype : ModelSubtype | null): void => {
     if (camera && controlsRef.current){
       const positions = subtype? 
-        fixCameraPositions[subtype] 
+        itemManager.getFixCameraPositions()[subtype] 
         : 
         [new THREE.Vector3(0, 1, 1.8), new THREE.Vector3(0, 1, 0)];
       camera.position.copy(positions[0]);
