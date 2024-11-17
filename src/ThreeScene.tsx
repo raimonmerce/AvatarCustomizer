@@ -35,14 +35,14 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
   useEffect(() => {
     if (!mountRef.current) return;
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const camera = new THREE.PerspectiveCamera(75, (window.innerWidth - 215) / window.innerHeight, 0.1, 1000);
     camera.position.set(0, 1, 2);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize((window.innerWidth - 215), window.innerHeight);
     mountRef.current.appendChild(renderer.domElement);
 
-    const light = new THREE.AmbientLight(0xffffff, 0.8);
+    const light = new THREE.AmbientLight(0xffffff, 0.9);
     scene.add(light);
 
     const controls = new OrbitControls(camera, renderer.domElement);
@@ -66,9 +66,9 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
     controlsRef.current = controls;
 
     const handleResize = () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.aspect = (window.innerWidth - 215) / window.innerHeight;
       camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setSize((window.innerWidth - 215), window.innerHeight);
     };
 
     window.addEventListener('resize', handleResize);
