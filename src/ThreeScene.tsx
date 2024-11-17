@@ -7,18 +7,36 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'; // Im
 
 type ThreeSceneProps = {
   bodyType: BodyType;
+  selectedAccessory: ModelName;
+  selectedBottom: ModelName;
+  selectedHairstly: ModelName;
+  selectedShoe: ModelName;
+  selectedTop: ModelName;
 };
 
-const ThreeScene: React.FC<ThreeSceneProps> = ({ bodyType }) => {
+const ThreeScene: React.FC<ThreeSceneProps> = ({ 
+  bodyType, 
+  selectedAccessory,
+  selectedBottom,
+  selectedHairstly,
+  selectedShoe,
+  selectedTop
+  }) => {
+
   const mountRef = useRef<HTMLDivElement>(null);
   const [scene, setScene] = useState<THREE.Scene | null>(null);
   const [camera, setCamera] = useState<THREE.PerspectiveCamera | null>(null);
   const [renderer, setRenderer] = useState<THREE.WebGLRenderer | null>(null);
   const [headModel, setHeadModel] = useState<THREE.Object3D | null>(null);
   const [bodyModel, setBodyModel] = useState<THREE.Object3D | null>(null);
+  const [accessoryModel, setAccessoryModel] = useState<THREE.Object3D | null>(null);
+  const [bottomModel, setBottomModel] = useState<THREE.Object3D | null>(null);
+  const [hairstlyModel, setHairstlyModel] = useState<THREE.Object3D | null>(null);
+  const [shoeModel, setShoeModel] = useState<THREE.Object3D | null>(null);
+  const [topModel, setTopModel] = useState<THREE.Object3D | null>(null);
   const itemManager = new ItemManager();
 
-  const controlsRef = useRef<OrbitControls | null>(null); // Reference for OrbitControls
+  const controlsRef = useRef<OrbitControls | null>(null);
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -78,12 +96,31 @@ const ThreeScene: React.FC<ThreeSceneProps> = ({ bodyType }) => {
     else return item.urlM;
   }
 
-  const setModel = (modelInfo : ModelInfo, model : THREE.Object3D) => {
+  const setModel = (modelInfo : ModelInfo, model : THREE.Object3D | null) => {
     if (modelInfo.type === ModelType.Body) {
       if (bodyModel) scene?.remove(bodyModel);
       setBodyModel(model);
+    } else if (modelInfo.type === ModelType.Head) {
+      if (headModel) scene?.remove(headModel);
+      setHeadModel(model);
+    } else if (modelInfo.type === ModelType.Garments) {
+      if (modelInfo.subType === ModelSubtype.Accessory) {
+        if (accessoryModel) scene?.remove(accessoryModel);
+        setAccessoryModel(model);
+      } else if (modelInfo.subType === ModelSubtype.Bottom) {
+        if (bottomModel) scene?.remove(bottomModel);
+        setBottomModel(model);
+      } else if (modelInfo.subType === ModelSubtype.Hairstly) {
+        if (hairstlyModel) scene?.remove(hairstlyModel);
+        setHairstlyModel(model);
+      } else if (modelInfo.subType === ModelSubtype.Shoe) {
+        if (shoeModel) scene?.remove(shoeModel);
+        setShoeModel(model);
+      } else if (modelInfo.subType === ModelSubtype.Top) {
+        if (topModel) scene?.remove(topModel);
+        setTopModel(model);
+      }
     }
-    else if (modelInfo.type === ModelType.Head) setHeadModel(model);
   }
 
   const getModelPosition = (modelInfo : ModelInfo): THREE.Vector3  => {
@@ -100,22 +137,24 @@ const ThreeScene: React.FC<ThreeSceneProps> = ({ bodyType }) => {
       console.error("Scene doesnt exist")
       return
     }
-    const itemToLoad = itemManager.findItemByName(modelName);
+    const itemToLoad = itemManager.getItem(modelName);
+    console.log("itemToLoad", itemToLoad)
     if (!itemToLoad) {
       console.error(modelName, " item doesnt exist")
       return
     }
+    if (itemToLoad.urlM === "") {
+      setModel(itemToLoad, null);
+      return;
+    }
     let path = getUrlGLB(itemToLoad, bodyType);
-    console.log("path", path)
     if (!path) {
       console.error(modelName, " doesnt have GBL URL")
       return
     }
     const dracoLoader = new DRACOLoader();
-    // Set the path where Draco decoder files are located (make sure the path is correct)
-    dracoLoader.setDecoderPath('path/to/draco/'); // Specify the correct path
+    dracoLoader.setDecoderPath('/draco/');
   
-    // Create a new GLTFLoader and set the DRACOLoader
     const loader = new GLTFLoader();
     loader.setDRACOLoader(dracoLoader); 
     loader.load(
@@ -128,7 +167,9 @@ const ThreeScene: React.FC<ThreeSceneProps> = ({ bodyType }) => {
         setModel(itemToLoad, loadedModel);
       },
       undefined,
-      (error) => console.error('Error loading model:', error)
+      (error) => {
+        console.error('Error loading model:', error)
+      }
     );
   };
 
@@ -138,8 +179,32 @@ const ThreeScene: React.FC<ThreeSceneProps> = ({ bodyType }) => {
 
   useEffect(() => {
     loadGLBModel(ModelName.Head, bodyType)
+    loadGLBModel(selectedAccessory, bodyType);
+    loadGLBModel(selectedBottom, bodyType);
+    loadGLBModel(selectedHairstly, bodyType);
+    loadGLBModel(selectedShoe, bodyType);
+    loadGLBModel(selectedTop, bodyType);
   }, [bodyModel]);
 
+  useEffect(() => {
+    loadGLBModel(selectedAccessory, bodyType);
+  }, [selectedAccessory]);
+
+  useEffect(() => {
+    loadGLBModel(selectedBottom, bodyType);
+  }, [selectedBottom]);
+
+  useEffect(() => {
+    loadGLBModel(selectedHairstly, bodyType);
+  }, [selectedHairstly]);
+
+  useEffect(() => {
+    loadGLBModel(selectedShoe, bodyType);
+  }, [selectedShoe]);
+
+  useEffect(() => {
+    loadGLBModel(selectedTop, bodyType);
+  }, [selectedTop]);
 
   // Animation loop
   useEffect(() => {

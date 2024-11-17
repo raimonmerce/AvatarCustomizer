@@ -6,32 +6,38 @@ export enum ModelName {
   //Accessories
   Mask = 'Mask',
   Glasses = 'Glasses',
-  Headphone = 'Headphone',
+  Headphone = 'Headphones',
   Headwear = 'Headwear',
+  EmptyAccessory = "No accessories",
   //Bottom
-  PantsCargo = 'PantsCargo',
-  PantsFormal = 'PantsFormal',
-  PantsShorts = 'PantsShorts',
-  SkirtMini = 'SkirtMini',
+  PantsCargo = 'Cargo pants',
+  PantsFormal = 'Formal pants',
+  PantsShorts = 'Short pants',
+  SkirtMini = 'Mini Skirt',
+  EmptyBottom = "No bottom",
   //Hairstly
-  Hair04 = 'Hair04',
-  Hair08 = 'Hair08',
-  Hair12 = 'Hair12',
-  Hair14 = 'Hair14',
-  Poly08 = 'Poly08',
-  Poly12 = 'Poly12',
-  Poly16 = 'Poly16',
-  Poly18 = 'Poly18',
+  Hair04 = 'Haircut 1',
+  Hair08 = 'Haircut 2',
+  Hair12 = 'Haircut 3',
+  Hair14 = 'Haircut 4',
+  Poly08 = 'Haircut 5',
+  Poly12 = 'Haircut 6',
+  Poly16 = 'Haircut 7',
+  Poly18 = 'Haircut 8',
+  EmptyHairstly = "No haircut",
   //Shoe
   Sandals = 'Sandals',
-  SneakerAir = 'SneakerAir',
-  SneakerCon = 'SneakerCon',
-  SneakerYee = 'SneakerYee',
+  SneakerAir = 'Sneaker AirForce',
+  SneakerCon = 'Sneaker Converse',
+  SneakerYee = 'Sneaker Yeezy',
+  EmptyShoe = "No shoes",
   //Top
-  BlazerHitman = 'BlazerHitman',
-  HoodieKangaroo = 'HoodieKangaroo',
-  PufferBasic = 'PufferBasic',
-  ShirtBasic = 'ShirtBasic',
+  BlazerHitman = 'Hitman blazer',
+  HoodieKangaroo = 'Kangaroo hoodie',
+  PufferBasic = 'Basic puffer',
+  ShirtBasic = 'Basic shirt',
+  EmptyTop = "No top"
+
 }
 
 export enum ModelType {
@@ -64,7 +70,7 @@ export interface ModelInfo {
   urlFJson?: string;
 }
 
-const itemsMap: Record<ModelName, ModelInfo> = {
+const itemsMap: Record<ModelName, ModelInfo | null> = {
   // Main
   [ModelName.Head]: {
     type: ModelType.Head,
@@ -107,6 +113,12 @@ const itemsMap: Record<ModelName, ModelInfo> = {
     urlM: '/frontend_test_assets/garments/accessories/v4_phr_male_UA_accessories_headwear_bunny_ears.glb',
     urlF: '/frontend_test_assets/garments/accessories/v4_phr_female_UA_accessories_headwear_bunny_ears.glb',
   },
+  [ModelName.EmptyAccessory]: {
+    type: ModelType.Garments,
+    name: ModelName.EmptyAccessory,
+    subType: ModelSubtype.Accessory,
+    urlM: '',
+  },
   // Bottom
   [ModelName.PantsCargo]: {
     type: ModelType.Garments,
@@ -143,6 +155,12 @@ const itemsMap: Record<ModelName, ModelInfo> = {
     urlMJson: '/frontend_test_assets/garments/bottom/v4_phr_male_UA_bottom_skirt_mini_sl_sf_sky.json',
     urlF: '/frontend_test_assets/garments/bottom/v4_phr_female_UA_bottom_skirt_mini_sl_sf_sky.glb',
     urlFJson: '/frontend_test_assets/garments/bottom/v4_phr_female_UA_bottom_skirt_mini_sl_sf_sky.json',
+  },
+  [ModelName.EmptyBottom]: {
+    type: ModelType.Garments,
+    name: ModelName.EmptyBottom,
+    subType: ModelSubtype.Bottom,
+    urlM: '',
   },
   // Hairstyle
   [ModelName.Hair04]: {
@@ -193,6 +211,12 @@ const itemsMap: Record<ModelName, ModelInfo> = {
     subType: ModelSubtype.Hairstly,
     urlM: '/frontend_test_assets/garments/hairstly/v4_phr_UA_polygonal_18.glb',
   },
+  [ModelName.EmptyHairstly]: {
+    type: ModelType.Garments,
+    name: ModelName.EmptyHairstly,
+    subType: ModelSubtype.Hairstly,
+    urlM: '',
+  },
   // Shoes
   [ModelName.Sandals]: {
     type: ModelType.Garments,
@@ -230,6 +254,12 @@ const itemsMap: Record<ModelName, ModelInfo> = {
     urlF: '/frontend_test_assets/garments/shoes/v3_phr_female_UA_shoes_sneakers_yeezy_darkgrey.glb',
     urlFJson: '/frontend_test_assets/garments/shoes/v3_phr_female_UA_shoes_sneakers_yeezy_darkgrey.json',
   },
+  [ModelName.EmptyShoe]: {
+    type: ModelType.Garments,
+    name: ModelName.EmptyShoe,
+    subType: ModelSubtype.Shoe,
+    urlM: '',
+  },
     // Top
   [ModelName.BlazerHitman]: {
     type: ModelType.Garments,
@@ -260,7 +290,6 @@ const itemsMap: Record<ModelName, ModelInfo> = {
     urlF: '/frontend_test_assets/garments/top/v3_phr_female_UA_top_puffer_basic_hn_ls_of_blue.glb',
     urlFJson: '/frontend_test_assets/garments/top/v3_phr_female_UA_top_puffer_basic_hn_ls_of_blue.json',
   },
-
   [ModelName.ShirtBasic]: {
     type: ModelType.Garments,
     name: ModelName.ShirtBasic,
@@ -270,24 +299,43 @@ const itemsMap: Record<ModelName, ModelInfo> = {
     urlF: '/frontend_test_assets/garments/top/v3_phr_female_UA_top_shirt_basic_ss_white.glb',
     urlFJson: '/frontend_test_assets/garments/top/v3_phr_female_UA_top_shirt_basic_ss_white.json',
   },
+  [ModelName.EmptyTop]: {
+    type: ModelType.Garments,
+    name: ModelName.EmptyTop,
+    subType: ModelSubtype.Top,
+    urlM: '',
+  },
 };
 
 export class ItemManager {
-  private items: Record<ModelName, ModelInfo>;
+  private items: Record<ModelName, ModelInfo | null>;
 
   constructor() {
     this.items = itemsMap;
   }
 
-  findItemByName(name: ModelName): ModelInfo {
+  getItem(name: ModelName): ModelInfo | null {
     return this.items[name];
   }
 
-  findItemByType(type: ModelType): ModelInfo[] {
-    return Object.values(this.items).filter(item => item.type === type);
+  getItemsByType(type: ModelType): ModelInfo[] {
+    return Object.values(this.items).filter((item): item is ModelInfo => item !== null && item.type === type);
   }
 
-  findItemBySubtype(subType: ModelSubtype): ModelInfo[] {
-    return Object.values(this.items).filter(item => item.subType === subType);
+  getItemsBySubtype(subType: ModelSubtype): ModelInfo[] {
+    return Object.values(this.items).filter((item): item is ModelInfo => item !== null && item.subType === subType);
+  }
+
+  getNamesBySubtype(subType: ModelSubtype): ModelName[] {
+    return Object.values(this.items)
+      .filter((item): item is ModelInfo => item !== null && item.subType === subType)
+      .map(item => item && item.name);
+  }
+
+  getModelNameFromString(modelName: string): ModelName {
+    if (Object.values(ModelName).includes(modelName as ModelName)) {
+      return modelName as ModelName;
+    }
+    return ModelName.EmptyShoe; // TO CHECK7
   }
 }
