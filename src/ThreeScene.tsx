@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-import { ModelName, ModelSubtype, ModelInfo, ItemManager, BodyType, ModelType } from './ItemManager';
+import { ModelName, ModelSubtype, ItemManager, BodyType, ModelType } from './ItemManager';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
+import Item from './classes/Item';
+import Garment from './classes/Garment';
 
 type ThreeSceneProps = {
   selectedBodyType: BodyType;
@@ -34,12 +36,13 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
   const raycaster = useRef(new THREE.Raycaster());
   const mouse = useRef(new THREE.Vector2());
   const controlsRef = useRef<OrbitControls | null>(null);
-  const itemManager = new ItemManager();
-  const maxCameraTargetY = 1.75;
-  const minCameraTargetY = 0.0;
+  const itemManagerRef = useRef<ItemManager | null>(new ItemManager());
   const interactiveObjects = useRef<THREE.Mesh[]>([]);
   const highlightedObject = useRef<THREE.Mesh | null>(null);
   const originalColor = useRef<THREE.Color | null>(null);
+  const maxCameraTargetY = 1.75;
+  const minCameraTargetY = 0.0;
+
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -90,11 +93,6 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
     };
   }, []);
 
-  const getUrlGLB = (item: ModelInfo) => {
-    if (props.selectedBodyType === BodyType.Female && item.urlF) return item.urlF
-    else return item.urlM;
-  }
-
   const removeModel = (currentModel: THREE.Object3D | null) => {
     if (!currentModel) return;
     if (currentModel.parent) {
@@ -104,32 +102,58 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
     }
   };
 
-  const setModel = (modelInfo : ModelInfo, model : THREE.Object3D | null) => {
-    if (modelInfo.type === ModelType.Body) {
-      if (bodyModel) removeModel(bodyModel);
-      setBodyModel(model);
-    } else if (modelInfo.type === ModelType.Head) {
-      if (headModel) removeModel(headModel);
-      setHeadModel(model);
-    } else if (modelInfo.type === ModelType.Garments) {
-      if (modelInfo.subType === ModelSubtype.Accessory) {
-        if (accessoryModel) removeModel(accessoryModel);
-        setAccessoryModel(model);
-      } else if (modelInfo.subType === ModelSubtype.Bottom) {
-        if (bottomModel) removeModel(bottomModel);
-        setBottomModel(model);
-      } else if (modelInfo.subType === ModelSubtype.Hairstly) {
-        if (hairstlyModel) removeModel(hairstlyModel);
-        setHairstlyModel(model);
-      } else if (modelInfo.subType === ModelSubtype.Shoe) {
-        if (shoeModel) removeModel(shoeModel);
-        setShoeModel(model);
-      } else if (modelInfo.subType === ModelSubtype.Top) {
-        if (topModel) removeModel(topModel);
-        setTopModel(model);
-      }
+  const setModel = (item: Item, model: THREE.Object3D | null) => {
+    const itemType = item.getType();
+
+    switch (itemType) {
+        case ModelType.Body:
+            if (bodyModel) removeModel(bodyModel);
+            setBodyModel(model);
+            break;
+
+        case ModelType.Head:
+            if (headModel) removeModel(headModel);
+            setHeadModel(model);
+            break;
+
+        case ModelType.Garments:
+            const itemSubtype = item.getSubtype();
+            switch (itemSubtype) {
+                case ModelSubtype.Accessory:
+                    if (accessoryModel) removeModel(accessoryModel);
+                    setAccessoryModel(model);
+                    break;
+
+                case ModelSubtype.Bottom:
+                    if (bottomModel) removeModel(bottomModel);
+                    setBottomModel(model);
+                    break;
+
+                case ModelSubtype.Hairstly:
+                    if (hairstlyModel) removeModel(hairstlyModel);
+                    setHairstlyModel(model);
+                    break;
+
+                case ModelSubtype.Shoe:
+                    if (shoeModel) removeModel(shoeModel);
+                    setShoeModel(model);
+                    break;
+
+                case ModelSubtype.Top:
+                    if (topModel) removeModel(topModel);
+                    setTopModel(model);
+                    break;
+
+                default:
+                    console.warn(`Unhandled Garment Subtype: ${itemSubtype}`);
+                    break;
+            }
+            break;
+        default:
+            console.warn(`Unhandled Model Type: ${itemType}`);
+            break;
     }
-  }
+};
 
   const addModelInPlace = (modelChild: THREE.Object3D, modelFather: THREE.Object3D | null, unionName: string) => {
     const unionObject = modelFather?.getObjectByName(unionName);
@@ -139,8 +163,10 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
       modelChild.visible = true;
   };
 
-  const addClothes = (modelChild: THREE.Object3D, modelFather: THREE.Object3D | null, metadata: any, subtype : ModelSubtype) => {
-    const relevantParts = itemManager.getCheckBodyParts()[subtype] || [];
+  const addClothes = async (modelChild: THREE.Object3D, modelFather: THREE.Object3D | null, garment : Garment) => {
+    const relevantParts = garment.getBodyParts();
+    const metadata = await garment.getMetadata();
+    if (!metadata) return;
     const bodyMetadata = metadata.metadata.body;
 
     Object.entries(bodyMetadata).forEach(([key, value]) => {
@@ -154,36 +180,31 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
     modelFather?.add(modelChild);
   };
 
-  const getMetadata = async (modelInfo: ModelInfo) => {
-    if (!modelInfo.urlMJson || !modelInfo.urlFJson) return null;
-    const response = await fetch(props.selectedBodyType === BodyType.Male ? modelInfo.urlMJson : modelInfo.urlFJson);
-
-    if (!response.ok) {
-      throw new Error('Network response was not ok');
-    }
-    const data = await response.json();
-    return data;
-  };
-
-  const addModel = async (modelInfo : ModelInfo, model : THREE.Object3D ) => {
+  const addModel = (item: Item, model: THREE.Object3D) => {
     if (!scene) return;
-    const metadata = await getMetadata(modelInfo);
-    if (modelInfo.type === ModelType.Body) {
-      scene.add(model);
-    } else if (modelInfo.type === ModelType.Head) {
-      addModelInPlace(model, bodyModel, 'Empty-Head');
-    } else if (modelInfo.type === ModelType.Garments) {
-      if (modelInfo.subType === ModelSubtype.Accessory) {
-        bodyModel?.add(model);
-      } else if (modelInfo.subType === ModelSubtype.Bottom) {
-        addClothes(model, bodyModel, metadata, ModelSubtype.Bottom);
-      } else if (modelInfo.subType === ModelSubtype.Hairstly) {
-        addModelInPlace(model, headModel, 'UnionAvatars_Head');
-      } else if (modelInfo.subType === ModelSubtype.Shoe) {
-        addClothes(model, bodyModel, metadata, ModelSubtype.Shoe);
-      } else if (modelInfo.subType === ModelSubtype.Top) {
-        model.position.y += 0.17; //Not sure why UnionAvatars_Neck dont exists so I hardcoded it a bit
-        addClothes(model, bodyModel, metadata, ModelSubtype.Top);
+  
+    const itemType = item.getType();
+  
+    const handleGarmentsSubtype = (garment: Garment) => {
+      const subType = garment.getSubtype();
+      if (!subType) return;
+      switch (subType) {
+        case ModelSubtype.Accessory:
+          bodyModel?.add(model);
+          break;
+        case ModelSubtype.Bottom:
+          addClothes(model, bodyModel, garment);
+          break;
+        case ModelSubtype.Hairstly:
+          addModelInPlace(model, headModel, 'UnionAvatars_Head');
+          break;
+        case ModelSubtype.Shoe:
+          addClothes(model, bodyModel, garment);
+          break;
+        case ModelSubtype.Top:
+          model.position.y += 0.17; // Adjust for missing "UnionAvatars_Neck"
+          addClothes(model, bodyModel, garment);
+          break;
       }
       if (model instanceof THREE.Group) {
         model.traverse((child) => {
@@ -192,39 +213,52 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
           }
         });
       }
+    };
+  
+    switch (itemType) {
+      case ModelType.Body:
+        scene.add(model);
+        break;
+  
+      case ModelType.Head:
+        addModelInPlace(model, bodyModel, 'Empty-Head');
+        break;
+  
+      case ModelType.Garments:
+        handleGarmentsSubtype(item as Garment);
+        break;
     }
-  }
+  };
 
-  const showAllBodyParts = (modelInfo: ModelInfo) => {
-    if (modelInfo?.subType) {
-      const relevantParts = itemManager.getCheckBodyParts()[modelInfo.subType] || [];
+  const showAgainBodyParts = (garment: Garment) => {
+    if (garment && garment.getSubtype()) {
+      const relevantParts = garment.getBodyParts();
       if (Array.isArray(relevantParts)) {
         relevantParts.forEach((partName) => {
-          const tmpObj = bodyModel?.getObjectByName(partName) as THREE.SkinnedMesh | undefined;
-          if (tmpObj) {
-            tmpObj.visible = true;
-          }
+          const bodyPart = bodyModel?.getObjectByName(partName) as THREE.SkinnedMesh | undefined;
+          if (bodyPart) bodyPart.visible = true;
         });
       }
     }
   }
 
-  const loadGLBModel = (modelName: ModelName) => {
-    if (!scene) return;
-    const itemToLoad = itemManager.getItem(modelName) as ModelInfo;
+  const loadGLBModel = (modelName: ModelName): Item | null => {
+    if (!scene || !itemManagerRef.current) return null;
+    const itemToLoad = itemManagerRef.current.getItem(modelName) as Item;
     if (!itemToLoad) {
       console.error(modelName, " item doesnt exist")
-      return
+      return null;
     }
-    if (itemToLoad.urlM === "") {
+    const pathToGLB = itemToLoad.getUrlGLB();
+    if (!pathToGLB) {
       setModel(itemToLoad, null);
-      showAllBodyParts(itemToLoad);
-      return;
+      showAgainBodyParts(itemToLoad as Garment);
+      return null;
     }
-    let path = getUrlGLB(itemToLoad);
-    if (!path) {
+    
+    if (!pathToGLB) {
       console.error(modelName, " doesnt have GBL URL")
-      return
+      return null;
     }
     const dracoLoader = new DRACOLoader();
     dracoLoader.setDecoderPath('/draco/');
@@ -232,7 +266,7 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
     const loader = new GLTFLoader();
     loader.setDRACOLoader(dracoLoader); 
     loader.load(
-      path,
+      pathToGLB,
       (gltf) => {
         const loadedModel = gltf.scene;
         addModel(itemToLoad, loadedModel);
@@ -243,14 +277,12 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
         console.error('Error loading model:', error)
       }
     );
+    return itemToLoad;    
   };
 
-  const changeToFixCamera = (subtype : ModelSubtype | null): void => {
-    if (camera && controlsRef.current){
-      const positions = subtype? 
-        itemManager.getFixCameraPositions()[subtype] 
-        : 
-        [new THREE.Vector3(0, 1, 1.8), new THREE.Vector3(0, 1, 0)];
+  const changeToFixCamera = (garment : Garment): void => {
+    if (camera && controlsRef.current ){
+      const positions = garment.getCameraPosition(); 
       camera.position.copy(positions[0]);
       cameraTarget.copy(positions[1]);
       controlsRef.current.target.copy(cameraTarget);
@@ -391,7 +423,10 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
   }, [isPanning, previousMouseY, camera]);
 
   useEffect(() => {
-    loadGLBModel(ModelName.Body)
+    if (itemManagerRef.current){
+      itemManagerRef.current.setBodyType(props.selectedBodyType);
+      loadGLBModel(ModelName.Body)
+    }
   }, [props.selectedBodyType, scene]);
 
   useEffect(() => {
@@ -400,7 +435,6 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
     loadGLBModel(props.selectedBottom);
     loadGLBModel(props.selectedShoe);
     loadGLBModel(props.selectedTop);
-    changeToFixCamera(null)
   }, [bodyModel]);
 
   useEffect(() => {
@@ -408,28 +442,28 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
   }, [headModel]);
 
   useEffect(() => {
-    loadGLBModel(props.selectedAccessory);
-    changeToFixCamera(ModelSubtype.Accessory)
+    const itemLoaded = loadGLBModel(props.selectedAccessory) as Garment;
+    if (itemLoaded) changeToFixCamera(itemLoaded);
   }, [props.selectedAccessory]);
 
   useEffect(() => {
-    loadGLBModel(props.selectedBottom);
-    changeToFixCamera(ModelSubtype.Bottom)
+    const itemLoaded = loadGLBModel(props.selectedBottom) as Garment;
+    if (itemLoaded) changeToFixCamera(itemLoaded);
   }, [props.selectedBottom]);
 
   useEffect(() => {
-    loadGLBModel(props.selectedHairstly);
-    changeToFixCamera(ModelSubtype.Hairstly)
+    const itemLoaded = loadGLBModel(props.selectedHairstly) as Garment;
+    if (itemLoaded) changeToFixCamera(itemLoaded);
   }, [props.selectedHairstly]);
 
   useEffect(() => {
-    loadGLBModel(props.selectedShoe);
-    changeToFixCamera(ModelSubtype.Shoe)
+    const itemLoaded = loadGLBModel(props.selectedShoe) as Garment;
+    if (itemLoaded) changeToFixCamera(itemLoaded);
   }, [props.selectedShoe]);
 
   useEffect(() => {
-    loadGLBModel(props.selectedTop);
-    changeToFixCamera(ModelSubtype.Top)
+    const itemLoaded = loadGLBModel(props.selectedTop) as Garment;
+    if (itemLoaded) changeToFixCamera(itemLoaded);
   }, [props.selectedTop]);
 
   // Animation loop

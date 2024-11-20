@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import Item from './classes/Item';
+import Garment from './classes/Garment';
 
 export enum ModelName {
   //Main
@@ -325,32 +327,65 @@ const itemsMap: Record<ModelName, ModelInfo | null> = {
 };
 
 export class ItemManager {
-  private items: Record<ModelName, ModelInfo | null>;
+  private items: Record<ModelName, Item | null>;
   private checkBodyParts: Record<ModelSubtype, string[]>;
   private fixCameraPositions: Record<ModelSubtype, [THREE.Vector3, THREE.Vector3]>;
 
   constructor() {
-    this.items = itemsMap;
     this.checkBodyParts = checkBodyParts;
     this.fixCameraPositions = fixCameraPositions;
+    this.items = this.generateItems(itemsMap, BodyType.Male);
   }
 
-  getItem(name: ModelName): ModelInfo | null {
-    return this.items[name];
+  private generateItems(itemsMap: Record<ModelName, ModelInfo | null>, bodyType: BodyType): Record<ModelName, Item | null> {
+    let items: Partial<Record<ModelName, Item | null>> = {};
+    Object.entries(itemsMap).forEach(([name, modelInfo]) => {
+        if (modelInfo) {
+            const { type, subType, urlM, urlMJson, urlF, urlFJson } = modelInfo;
+            if (type === ModelType.Garments && subType){
+              items[name as ModelName] = new Garment(
+                type as ModelType,
+                name as ModelName,
+                urlM,
+                bodyType as BodyType,
+                this.checkBodyParts[subType as ModelSubtype],
+                this.fixCameraPositions[subType as ModelSubtype],
+                subType as ModelSubtype,
+                urlMJson,
+                urlF,
+                urlFJson
+              );
+            } else {
+              items[name as ModelName] = new Item(
+                type,
+                name as ModelName,
+                urlM,
+                bodyType,
+                subType,
+                urlF,
+              );
+            }
+        }
+    });
+    return items as Record<ModelName, Item>;
   }
 
-  getItemsByType(type: ModelType): ModelInfo[] {
-    return Object.values(this.items).filter((item): item is ModelInfo => item !== null && item.type === type);
+  getItem(name: ModelName): Item | null {
+    return this.items[name] || null;
   }
 
-  getItemsBySubtype(subType: ModelSubtype): ModelInfo[] {
-    return Object.values(this.items).filter((item): item is ModelInfo => item !== null && item.subType === subType);
+  getItemsByType(type: ModelType): Item[] {
+      return Object.values(this.items).filter((item): item is Item => item !== null && item.getType() === type);
+  }
+
+  getItemsBySubtype(subType: ModelSubtype): Item[] {
+      return Object.values(this.items).filter((item): item is Item => item !== null && item.getSubtype() === subType);
   }
 
   getNamesBySubtype(subType: ModelSubtype): ModelName[] {
-    return Object.values(this.items)
-      .filter((item): item is ModelInfo => item !== null && item.subType === subType)
-      .map(item => item && item.name);
+      return Object.values(this.items)
+          .filter((item): item is Item => item !== null && item.getSubtype() === subType)
+          .map(item => item.getName());
   }
 
   getModelNameFromString(modelName: string): ModelName {
@@ -360,11 +395,9 @@ export class ItemManager {
     return ModelName.EmptyShoe; //To check
   }
 
-  getCheckBodyParts(): Record<ModelSubtype, string[]> {
-    return this.checkBodyParts;
-  }
-
-  getFixCameraPositions(): Record<ModelSubtype, [THREE.Vector3, THREE.Vector3]> {
-    return this.fixCameraPositions;
+  setBodyType(bodyType: BodyType): void {
+    Object.values(this.items).forEach(item => {
+        if (item) item.setBodyType(bodyType);
+    });
   }
 }
