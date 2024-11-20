@@ -1,4 +1,4 @@
-import { ModelName, ModelSubtype, ModelType, BodyType } from '../ItemManager';
+import { ModelName, ModelSubtype, ModelType, BodyType } from '../ModelEnums';
 
 export default class Item {
     private type: ModelType;

@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
 import './App.css';
 import ThreeScene from './ThreeScene';
-import { ModelName, BodyType, ItemManager, ModelSubtype } from './ItemManager';
+import { ModelName, BodyType, ModelSubtype } from './ModelEnums';
 import DropdownSelector from './DropdownSelector';
+import ItemManager from './ItemManager';
 
 const App: React.FC = () => {
   const [selectedBodyType, setSelectedBodyType] = useState<BodyType>(BodyType.Male);
@@ -11,7 +12,7 @@ const App: React.FC = () => {
   const [selectedHairstly, setSelectedHairstly] = useState<ModelName>(ModelName.EmptyHairstly);
   const [selectedShoe, setSelectedShoe] = useState<ModelName>(ModelName.EmptyShoe);
   const [selectedTop, setSelectedTop] = useState<ModelName>(ModelName.EmptyTop);
-  const itemManager = new ItemManager();
+  const itemManagerRef = useRef<ItemManager | null>(new ItemManager());
 
   const threeSceneRef = useRef<{ downloadGLB: () => void }>(null);
 
@@ -26,23 +27,23 @@ const App: React.FC = () => {
   };
 
   const handleAccessoryChange = (value: string) => {
-    setSelectedAccessory(itemManager.getModelNameFromString(value));
+    if (itemManagerRef.current) setSelectedAccessory(itemManagerRef.current.getModelNameFromString(value));
   };
 
   const handleBottomChange = (value: string) => {
-    setSelectedBottom(itemManager.getModelNameFromString(value));
+    if (itemManagerRef.current) setSelectedBottom(itemManagerRef.current.getModelNameFromString(value));
   };
 
   const handleHairstlyChange = (value: string) => {
-    setSelectedHairstly(itemManager.getModelNameFromString(value));
+    if (itemManagerRef.current) setSelectedHairstly(itemManagerRef.current.getModelNameFromString(value));
   };
 
   const handleShoeChange = (value: string) => {
-    setSelectedShoe(itemManager.getModelNameFromString(value));
+    if (itemManagerRef.current) setSelectedShoe(itemManagerRef.current.getModelNameFromString(value));
   };
 
   const handleTopChange = (value: string) => {
-    setSelectedTop(itemManager.getModelNameFromString(value));
+    if (itemManagerRef.current) setSelectedTop(itemManagerRef.current.getModelNameFromString(value));
   };
 
   return (
@@ -57,35 +58,55 @@ const App: React.FC = () => {
 
         <DropdownSelector
           label="Hairstyle"
-          options={itemManager.getNamesBySubtype(ModelSubtype.Hairstly)}
+          options={
+            itemManagerRef.current? 
+            itemManagerRef.current.getNamesBySubtype(ModelSubtype.Hairstly)
+            : []
+          }
           selectedValue={selectedHairstly}
           onChange={handleHairstlyChange}
         />
 
         <DropdownSelector
           label="Tops"
-          options={itemManager.getNamesBySubtype(ModelSubtype.Top)}
+          options={
+            itemManagerRef.current? 
+            itemManagerRef.current.getNamesBySubtype(ModelSubtype.Top)
+            : []
+          }
           selectedValue={selectedTop}
           onChange={handleTopChange}
         />
 
         <DropdownSelector
           label="Bottoms"
-          options={itemManager.getNamesBySubtype(ModelSubtype.Bottom)}
+          options={
+            itemManagerRef.current? 
+            itemManagerRef.current.getNamesBySubtype(ModelSubtype.Bottom)
+            : []
+          }
           selectedValue={selectedBottom}
           onChange={handleBottomChange}
         />
 
         <DropdownSelector
           label="Shoes"
-          options={itemManager.getNamesBySubtype(ModelSubtype.Shoe)}
+          options={
+            itemManagerRef.current? 
+            itemManagerRef.current.getNamesBySubtype(ModelSubtype.Shoe)
+            : []
+          }
           selectedValue={selectedShoe}
           onChange={handleShoeChange}
         />
 
         <DropdownSelector
           label="Accessories"
-          options={itemManager.getNamesBySubtype(ModelSubtype.Accessory)}
+          options={
+            itemManagerRef.current? 
+            itemManagerRef.current.getNamesBySubtype(ModelSubtype.Accessory)
+            : []
+          }
           selectedValue={selectedAccessory}
           onChange={handleAccessoryChange}
         />
@@ -102,6 +123,7 @@ const App: React.FC = () => {
           selectedHairstly={selectedHairstly}
           selectedShoe={selectedShoe}
           selectedTop={selectedTop}
+          itemManager = {itemManagerRef.current}
         />
       </div>
     </div>

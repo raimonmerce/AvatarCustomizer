@@ -1,4 +1,4 @@
-import { ModelName, ModelSubtype, ModelType, BodyType } from '../ItemManager';
+import { ModelName, ModelSubtype, ModelType, BodyType } from '../ModelEnums';
 import Item from './Item';
 import * as THREE from 'three';
 
@@ -18,8 +18,8 @@ export default class Garment extends Item {
         cameraPosition: [THREE.Vector3, THREE.Vector3],
         subType?: ModelSubtype,
         urlF?: string,
-        urlFJson?: string,
         urlMJson?: string,
+        urlFJson?: string,
     ) {
         super(type, name, urlM, bodyType, subType, urlF);
         this.bodyParts = bodyParts;

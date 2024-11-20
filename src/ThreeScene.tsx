@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-import { ModelName, ModelSubtype, ItemManager, BodyType, ModelType } from './ItemManager';
+import { ModelName, ModelSubtype, BodyType, ModelType } from './ModelEnums';
+import ItemManager from './ItemManager';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
@@ -15,6 +16,7 @@ type ThreeSceneProps = {
   selectedHairstly: ModelName;
   selectedShoe: ModelName;
   selectedTop: ModelName;
+  itemManager: ItemManager | null
 };
 
 const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
@@ -36,7 +38,6 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
   const raycaster = useRef(new THREE.Raycaster());
   const mouse = useRef(new THREE.Vector2());
   const controlsRef = useRef<OrbitControls | null>(null);
-  const itemManagerRef = useRef<ItemManager | null>(new ItemManager());
   const interactiveObjects = useRef<THREE.Mesh[]>([]);
   const highlightedObject = useRef<THREE.Mesh | null>(null);
   const originalColor = useRef<THREE.Color | null>(null);
@@ -243,8 +244,8 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
   }
 
   const loadGLBModel = (modelName: ModelName): Item | null => {
-    if (!scene || !itemManagerRef.current) return null;
-    const itemToLoad = itemManagerRef.current.getItem(modelName) as Item;
+    if (!scene || !props.itemManager) return null;
+    const itemToLoad = props.itemManager.getItem(modelName) as Item;
     if (!itemToLoad) {
       console.error(modelName, " item doesnt exist")
       return null;
@@ -260,6 +261,7 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
       console.error(modelName, " doesnt have GBL URL")
       return null;
     }
+
     const dracoLoader = new DRACOLoader();
     dracoLoader.setDecoderPath('/draco/');
   
@@ -423,8 +425,8 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
   }, [isPanning, previousMouseY, camera]);
 
   useEffect(() => {
-    if (itemManagerRef.current){
-      itemManagerRef.current.setBodyType(props.selectedBodyType);
+    if (props.itemManager){
+      props.itemManager.setBodyType(props.selectedBodyType);
       loadGLBModel(ModelName.Body)
     }
   }, [props.selectedBodyType, scene]);
