@@ -1,13 +1,13 @@
-import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
+import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle, useCallback } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { ModelName, ModelSubtype, BodyType, ModelType } from './ModelEnums';
 import ItemManager from './ItemManager';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter';
 import Item from './classes/Item';
 import Garment from './classes/Garment';
+import { useGLBExport } from './hooks/useGLBExport';
 
 type ThreeSceneProps = {
   selectedBodyType: BodyType;
@@ -44,7 +44,7 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
   const maxCameraTargetY = 1.75;
   const minCameraTargetY = 0.0;
 
-
+  
   useEffect(() => {
     if (!mountRef.current) return;
     const scene = new THREE.Scene();
@@ -102,6 +102,8 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
       scene?.remove(currentModel);
     }
   };
+
+  const { downloadGLB } = useGLBExport(bodyModel);
 
   const setModel = (item: Item, model: THREE.Object3D | null) => {
     const itemType = item.getType();
@@ -256,7 +258,7 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
       showAgainBodyParts(itemToLoad as Garment);
       return null;
     }
-    
+
     if (!pathToGLB) {
       console.error(modelName, " doesnt have GBL URL")
       return null;
@@ -279,7 +281,7 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
         console.error('Error loading model:', error)
       }
     );
-    return itemToLoad;    
+    return itemToLoad;
   };
 
   const changeToFixCamera = (garment : Garment): void => {
@@ -291,49 +293,6 @@ const ThreeScene = forwardRef((props: ThreeSceneProps, ref) => {
       camera.lookAt(cameraTarget);
     }
   }
-
-  const downloadGLB = (): void => {
-    const object = bodyModel;
-    if (!object) {
-        console.error('No object to export!');
-        return;
-    }
-
-    if (object.type !== "Group" && object.type !== "Mesh") {
-        console.error("Invalid object type for export:", object.type);
-        return;
-    }
-
-    let fileName = 'model.glb';
-    const exporter = new GLTFExporter();
-
-    try {
-        exporter.parse(
-            object,
-            (result: ArrayBuffer | object) => {
-                if (result instanceof ArrayBuffer) {
-                    console.log("GLB export successful, size:", result.byteLength, "bytes");
-                    const blob = new Blob([result], { type: 'model/gltf-binary' });
-                    const link = document.createElement('a');
-                    link.href = URL.createObjectURL(blob);
-                    link.download = fileName;
-                    document.body.appendChild(link);
-                    link.click();
-                    URL.revokeObjectURL(link.href);
-                    document.body.removeChild(link);
-                } else {
-                    console.error('Failed to export as GLB. Unexpected result type:', result);
-                }
-            },
-            (error: any) => {
-                console.error('GLTF Export failed with error:', error);
-            },
-            { binary: true }
-        );
-    } catch (error) {
-        console.error("An unexpected error occurred during GLB export:", error);
-    }
-}
 
   useImperativeHandle(ref, () => ({
     downloadGLB,
